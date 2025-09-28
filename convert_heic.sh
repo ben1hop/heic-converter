@@ -27,10 +27,13 @@ spinner() {
 
 # Help menu
 show_help() {
-  echo -e "${BLUE}Usage:${NC} ./convert_heic.sh [directory] [--format=png|jpg|webp] [--delete]"
+  echo -e "${BLUE}Usage:${NC} ./convert_heic.sh [targets...] [--format=png|jpg|webp] [--delete]"
+  echo
+  echo "Targets:"
+  echo "  Can be zero or more file paths and/or directory paths."
+  echo "  If no targets are supplied the current directory is searched."
   echo
   echo "Options:"
-  echo "  directory        Optional. Path to the folder containing .heic files (default: current dir)"
   echo "  --format=EXT     Optional. Output image format (default: png)"
   echo "  --delete         Delete original .heic files after successful conversion"
   echo "  --help           Show this help message"
@@ -45,11 +48,11 @@ if [[ "$1" == "--version" ]]; then
 fi
 
 # Defaults
-TARGET_DIR="."
 OUTPUT_FORMAT="png"
 DELETE_ORIGINAL=false
+TARGETS=()
 
-# Parse arguments
+# Parse arguments (collect targets; options may appear anywhere)
 for arg in "$@"; do
   case $arg in
     --help)
@@ -65,11 +68,19 @@ for arg in "$@"; do
     --delete)
       DELETE_ORIGINAL=true
       ;;
+    --*)
+      echo -e "${YELLOW}Warning:${NC} Unknown option '$arg' - ignoring"
+      ;;
     *)
-      TARGET_DIR="$arg"
+      TARGETS+=("$arg")
       ;;
   esac
 done
+
+# If no targets supplied, default to current directory
+if [ ${#TARGETS[@]} -eq 0 ]; then
+  TARGETS+=(".")
+fi
 
 # Validate output format
 case "$OUTPUT_FORMAT" in
@@ -103,19 +114,50 @@ if ! command -v magick &> /dev/null; then
 fi
 
 # Announce start
-echo -e "${BLUE}${FOLDER} Processing directory: $TARGET_DIR"
+echo -e "${BLUE}${FOLDER} Targets: ${NC}${TARGETS[*]}"
 echo -e "${BLUE}${ARROW} Output format: $OUTPUT_FORMAT${NC}"
 $DELETE_ORIGINAL && echo -e "${YELLOW}${ARROW} Source files will be deleted after conversion.${NC}"
 
-# Find files
+# Collect files from targets (files and directories). Preserve order, avoid duplicates.
 FILES=()
-while IFS= read -r -d $'\0' file; do
-  FILES+=("$file")
-done < <(find "$TARGET_DIR" -type f -iname "*.heic" -print0)
+file_in_list() {
+  local needle="$1"
+  for existing in "${FILES[@]}"; do
+    if [ "$existing" = "$needle" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+for t in "${TARGETS[@]}"; do
+  if [ -d "$t" ]; then
+    # Find HEIC/HEIF files in the directory (case-insensitive)
+    while IFS= read -r -d $'\0' file; do
+      if ! file_in_list "$file"; then
+        FILES+=("$file")
+      fi
+    done < <(find "$t" -type f \( -iname "*.heic" -o -iname "*.heif" \) -print0)
+  elif [ -f "$t" ]; then
+    # If a file was provided, only add it if it looks like a HEIC/HEIF image
+    ext="${t##*.}"
+    shopt -s nocasematch
+    if [[ "$ext" == "heic" || "$ext" == "heif" ]]; then
+      if ! file_in_list "$t"; then
+        FILES+=("$t")
+      fi
+    else
+      echo -e "${YELLOW}Skipping:${NC} '$t' is not a HEIC/HEIF file"
+    fi
+    shopt -u nocasematch
+  else
+    echo -e "${YELLOW}Warning:${NC} Target '$t' does not exist - skipping"
+  fi
+done
 
 TOTAL=${#FILES[@]}
 if [ "$TOTAL" -eq 0 ]; then
-  echo -e "${YELLOW}${CROSS} No HEIC files found in directory.${NC}"
+  echo -e "${YELLOW}${CROSS} No HEIC/HEIF files found in the given targets.${NC}"
   exit 0
 fi
 
