@@ -36,6 +36,7 @@ show_help() {
   echo "Options:"
   echo "  --format=EXT     Optional. Output image format (default: png)"
   echo "  --delete         Delete original .heic files after successful conversion"
+  echo "  --strip-metadata Remove EXIF and other metadata before conversion"
   echo "  --help           Show this help message"
   echo "  --version        Show script version"
   exit 0
@@ -50,6 +51,7 @@ fi
 # Defaults
 OUTPUT_FORMAT="png"
 DELETE_ORIGINAL=false
+STRIP_METADATA=false
 TARGETS=()
 
 # Parse arguments (collect targets; options may appear anywhere)
@@ -67,6 +69,9 @@ for arg in "$@"; do
       ;;
     --delete)
       DELETE_ORIGINAL=true
+      ;;
+    --strip-metadata)
+      STRIP_METADATA=true
       ;;
     --*)
       echo -e "${YELLOW}Warning:${NC} Unknown option '$arg' - ignoring"
@@ -93,7 +98,7 @@ case "$OUTPUT_FORMAT" in
 esac
 
 # Tool checks
-if ! command -v exiftool &> /dev/null; then
+if [ "$STRIP_METADATA" = true ] && ! command -v exiftool &> /dev/null; then
   echo -e "${RED}${CROSS} 'exiftool' not found.${NC}"
   echo -e "${YELLOW}  → Install with:${NC}"
   echo "    macOS: brew install exiftool"
@@ -117,6 +122,7 @@ fi
 echo -e "${BLUE}${FOLDER} Targets: ${NC}${TARGETS[*]}"
 echo -e "${BLUE}${ARROW} Output format: $OUTPUT_FORMAT${NC}"
 $DELETE_ORIGINAL && echo -e "${YELLOW}${ARROW} Source files will be deleted after conversion.${NC}"
+$STRIP_METADATA && echo -e "${YELLOW}${ARROW} Metadata will be stripped before conversion.${NC}"
 
 # Collect files from targets (files and directories). Preserve order, avoid duplicates.
 FILES=()
@@ -170,14 +176,16 @@ for file in "${FILES[@]}"; do
 
   echo -e "\n${BLUE}${ARROW} [$COUNT/$TOTAL] ${base_name}${NC}"
 
-  printf "  Stripping metadata..."
-  (exiftool -overwrite_original -all= "$file" >/dev/null 2>&1) &
-  spinner
-  if [ $? -eq 0 ]; then
-    echo -e " ${GREEN}${CHECKMARK} Done${NC}"
-  else
-    echo -e " ${RED}${CROSS} Failed${NC}"
-    continue
+  if [ "$STRIP_METADATA" = true ]; then
+    printf "  Stripping metadata..."
+    (exiftool -overwrite_original -all= "$file" >/dev/null 2>&1) &
+    spinner
+    if [ $? -eq 0 ]; then
+      echo -e " ${GREEN}${CHECKMARK} Done${NC}"
+    else
+      echo -e " ${RED}${CROSS} Failed${NC}"
+      continue
+    fi
   fi
 
   printf "  Converting to $OUTPUT_FORMAT..."
