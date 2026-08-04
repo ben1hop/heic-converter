@@ -30,8 +30,7 @@ show_help() {
   echo -e "${BLUE}Usage:${NC} ./convert_heic.sh [targets...] [--format=png|jpg|webp] [--delete]"
   echo
   echo "Targets:"
-  echo "  Can be zero or more file paths and/or directory paths."
-  echo "  If no targets are supplied the current directory is searched."
+  echo "  One or more file paths and/or directory paths (required)."
   echo
   echo "Options:"
   echo "  --format=EXT     Optional. Output image format (default: png)"
@@ -42,10 +41,9 @@ show_help() {
   exit 0
 }
 
-# Version
-if [[ "$1" == "--version" ]]; then
-  echo "convert_heic v1.0.0"
-  exit 0
+# Version / help when invoked with no arguments
+if [ $# -eq 0 ]; then
+  show_help
 fi
 
 # Defaults
@@ -65,7 +63,7 @@ for arg in "$@"; do
       exit 0
       ;;
     --format=*)
-      OUTPUT_FORMAT="${arg#*=}"
+      OUTPUT_FORMAT=$(echo "${arg#*=}" | tr '[:upper:]' '[:lower:]')
       ;;
     --delete)
       DELETE_ORIGINAL=true
@@ -82,9 +80,8 @@ for arg in "$@"; do
   esac
 done
 
-# If no targets supplied, default to current directory
 if [ ${#TARGETS[@]} -eq 0 ]; then
-  TARGETS+=(".")
+  show_help
 fi
 
 # Validate output format
@@ -202,8 +199,3 @@ for file in "${FILES[@]}"; do
 done
 
 echo -e "\n${GREEN}${CHECKMARK} All done! Processed $TOTAL file(s).${NC}"
-# --version support
-if [[ "$1" == "--version" ]]; then
-  echo "$SCRIPT_NAME v1.0.0"
-  exit 0
-fi

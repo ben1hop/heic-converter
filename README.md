@@ -63,19 +63,20 @@ Innentől a `convert_heic` parancs bármely mappából futtatható — nem kell 
 convert_heic [célok...] [opciók...]
 ```
 
-**Célok:** nulla vagy több fájl- és/vagy mappaútvonal. Ha nincs megadva cél, az aktuális mappa kerül feldolgozásra.
+**Célok:** egy vagy több fájl- és/vagy mappaútvonal (kötelező). Paraméter nélkül a script a súgót jeleníti meg.
 
 ### Példák
 
 ```bash
-# Aktuális mappa összes HEIC fájlja → PNG
+# Súgó
 convert_heic
+convert_heic --help
 
 # Egy fájl konvertálása
 convert_heic photo.heic
 
-# JPG formátum, metaadatok megőrzése
-convert_heic --format=jpg photo.heic
+# JPG formátum (kis- és nagybetű is OK: JPG, Jpg, jpg)
+convert_heic --format=JPG photo.heic
 
 # Metaadatok törlése konvertálás előtt
 convert_heic --strip-metadata photo.heic
@@ -91,7 +92,7 @@ convert_heic img1.heic ./vacation/ ./other.heic --format=jpg
 
 | Opció | Leírás |
 |-------|--------|
-| `--format=EXT` | Kimeneti formátum: `png`, `jpg`, `jpeg`, `webp`, `tiff`, `bmp` (alapértelmezett: `png`) |
+| `--format=EXT` | Kimeneti formátum: `png`, `jpg`, `jpeg`, `webp`, `tiff`, `bmp` (kis- és nagybetű mindegy; alapértelmezett: `png`) |
 | `--strip-metadata` | EXIF és egyéb metaadatok törlése a konvertálás előtt |
 | `--delete` | Eredeti HEIC/HEIF fájl törlése sikeres konvertálás után |
 | `--help` | Súgó megjelenítése |
